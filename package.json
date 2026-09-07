@@ -1,0 +1,85 @@
+{
+  "name": "commit-gen",
+  "displayName": "AI Commit Generator",
+  "description": "Auto-generates conventional commits using Google Gemma and Gemini Flash.",
+  "version": "0.0.1",
+  "publisher": "MiracleInvoker",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MiracleInvoker/commit-gen"
+  },
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "npm@11.19.0",
+  "engines": {
+    "vscode": "^1.136.0"
+  },
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:workbench.view.scm"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "AI Commit Generator",
+      "properties": {
+        "commitGen.instructions": {
+          "type": "string",
+          "default": "You are an Expert Developer. Generate a concise Conventional Commit message based on the diff. Do not include markdown formatting or explanations.",
+          "description": "System Instructions sent to the LLM for formatting your commits. Syncs via VS Code Settings Sync.",
+          "editPresentation": "multilineText"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "commit-gen.generateCommit",
+        "title": "Generate Commit Message",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "commit-gen.setApiKey",
+        "title": "Commit Gen: Set Gemini API Key"
+      }
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "commit-gen.generateCommit",
+          "when": "scmProvider == git",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "24.x",
+    "@types/vscode": "^1.136.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0",
+    "eslint": "^10.5.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1"
+  },
+  "overrides": {
+    "diff": "^8.0.4",
+    "serialize-javascript": "^7.0.6"
+  },
+  "dependencies": {
+    "@google/genai": "^2.21.0"
+  }
+}
