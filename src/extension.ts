@@ -1,12 +1,12 @@
 import * as vscode from "vscode";
-import { execFile } from "child_process";
-import { promisify } from "util";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { GoogleGenAI } from "@google/genai";
 
 const execFileAsync = promisify(execFile);
 
 export function activate(context: vscode.ExtensionContext) {
-  let setKeyDisposable = vscode.commands.registerCommand(
+  const setKeyDisposable = vscode.commands.registerCommand(
     "commit-gen.setApiKey",
     async () => {
       const key = await vscode.window.showInputBox({
@@ -24,7 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
-  let disposable = vscode.commands.registerCommand(
+  const disposable = vscode.commands.registerCommand(
     "commit-gen.generateCommit",
     async (sourceControl?: vscode.SourceControl) => {
       try {
@@ -40,35 +40,47 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        const gitExtension =
-          vscode.extensions.getExtension("vscode.git")?.exports;
+        const gitExtension = vscode.extensions.getExtension("vscode.git");
         if (!gitExtension) {
           throw new Error("VS Code Git extension not found");
         }
 
-        const api = gitExtension.getAPI(1);
+        if (!gitExtension.isActive) {
+          await gitExtension.activate();
+        }
 
-        const repo = sourceControl
-          ? api.repositories.find(
-              (r: any) =>
-                r.rootUri.toString() === sourceControl.rootUri?.toString(),
-            )
-          : api.repositories[0];
-
-        if (!repo) {
+        const api = gitExtension.exports.getAPI(1);
+        if (api.repositories.length === 0) {
           throw new Error("No Git repository found in the workspace");
         }
 
+        let repo = api.repositories[0];
+        if (sourceControl?.rootUri) {
+          const matchedRepo = api.repositories.find(
+            (r: any) =>
+              r.rootUri.toString() === sourceControl.rootUri!.toString(),
+          );
+          if (matchedRepo) {
+            repo = matchedRepo;
+          }
+        }
+
         const gitPath = api.git.path;
+        if (!gitPath) {
+          throw new Error("Git executable not found");
+        }
+
         const { stdout: diff } = await execFileAsync(
           gitPath,
           [
             "diff",
             "--staged",
+            "--no-ext-diff",
             "--",
             ":(exclude)*-lock.json",
             ":(exclude)*.lock",
             ":(exclude)*.map",
+            ":(exclude)*.svg",
           ],
           {
             cwd: repo.rootUri.fsPath,
@@ -124,10 +136,8 @@ export function activate(context: vscode.ExtensionContext) {
                 });
 
                 const countResponse = await ai.models.countTokens({
-                  model: "gemma-4-31b-it",
-                  contents: [
-                    { role: "user", parts: [{ text: combinedPrompt }] },
-                  ],
+                  model: targetModel,
+                  contents: combinedPrompt,
                   config: { abortSignal: controller.signal } as any,
                 });
 
@@ -154,18 +164,25 @@ export function activate(context: vscode.ExtensionContext) {
 
               const response = await ai.models.generateContent({
                 model: targetModel,
-                contents: [{ role: "user", parts: [{ text: combinedPrompt }] }],
+                contents: combinedPrompt,
                 config: {
                   thinkingConfig:
                     targetModel === "gemma-4-31b-it"
-                      ? { thinkingLevel: "HIGH" as any }
+                      ? { thinkingLevel: "HIGH" }
                       : undefined,
-                  abortSignal: controller.signal as any,
-                },
+                  abortSignal: controller.signal,
+                } as any,
               });
 
-              let commitMessage = response.text || "";
+              if (!response.text) {
+                throw new Error(
+                  "AI returned an empty response. It may have been blocked by safety filters.",
+                );
+              }
+
+              let commitMessage = response.text;
               commitMessage = commitMessage
+                .replace(/<think>[\s\S]*?<\/think>/g, "")
                 .replace(/^```[\s\S]*?\n/, "")
                 .replace(/```$/, "")
                 .trim();
@@ -188,6 +205,7 @@ export function activate(context: vscode.ExtensionContext) {
           },
         );
       } catch (error: any) {
+        console.error(error);
         vscode.window.showErrorMessage(`Failed: ${error.message}`);
       }
     },

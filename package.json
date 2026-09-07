@@ -2,7 +2,7 @@
   "name": "commit-gen",
   "displayName": "AI Commit Generator",
   "description": "Auto-generates conventional commits using Google Gemma and Gemini Flash.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "MiracleInvoker",
   "repository": {
     "type": "git",
@@ -30,7 +30,7 @@
       "properties": {
         "commitGen.instructions": {
           "type": "string",
-          "default": "You are an Expert Developer. Generate a concise Conventional Commit message based on the diff. Do not include markdown formatting or explanations.",
+          "default": "You are an expert developer. Generate a concise Conventional Commit message based on the diff. Do not include markdown formatting or explanations.",
           "description": "System Instructions sent to the LLM for formatting your commits. Syncs via VS Code Settings Sync.",
           "editPresentation": "multilineText"
         }
@@ -39,7 +39,8 @@
     "commands": [
       {
         "command": "commit-gen.generateCommit",
-        "title": "Generate Commit Message",
+        "title": "Commit Gen: Generate Commit Message",
+        "shortTitle": "Generate Commit",
         "icon": "$(sparkle)"
       },
       {
